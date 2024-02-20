@@ -53,8 +53,6 @@ const AddVariantsForm = ({
 
   const formValues: any = getValues()
 
-  console.log("getValues", formValues.variants.options)
-
   const formOptions = formValues?.variants?.options
 
   const { checkForDuplicate, getOptions } = useCheckOptions(form)
@@ -337,26 +335,18 @@ const AddVariantsForm = ({
                       {(formOptions[index] && formOptions[index]?.title) ? <Controller
                         control={control}
                         name={path(`options.${index}.values`)}
-                        render={({ field: { value, onChange } }) => {
-                          console.log("value", value)
-                          return (
-                            <NextSelect
-                              isSearchable={false}
-                              isMulti
-                              value={value?.map(item => ({ label: item.label, value: item.value })) || []}
-                              onChange={(e) => {
-                                console.log(e)
-                                onChange(e)
-                              }}
-                              options={(formOptions[index] && formOptions[index]?.title ? OPTIONS[formOptions[index]?.title as keyof typeof OPTIONS] : []).map((item) => ({ label: item, value: item }))}
-                              // options={OPTIONS["color"].map((item) => ({ label: item, value: item }))}
-                              placeholder={t("add-variants-blue-red-black", "Blue, Red, Black...")}
-                              isClearable
-                            />
-                          )
-                        }}
+                        render={({ field: { value, onChange } }) => (
+                          <NextSelect
+                            isSearchable={false}
+                            isMulti
+                            value={value}
+                            onChange={onChange}
+                            options={(formOptions[index] && formOptions[index]?.title ? OPTIONS[formOptions[index]?.title as keyof typeof OPTIONS] : []).map((item) => ({ label: item, value: item }))}
+                            placeholder={t("add-variants-blue-red-black", "Blue, Red, Black...")}
+                            isClearable
+                          />
+                        )}
                       /> : <NextSelect
-                        // options={OPTIONS["color"].map((item) => ({ label: item, value: item }))}
                         placeholder={t("add-variants-blue-red-black", "Please Select the title first")}
                         isClearable
                       />}
