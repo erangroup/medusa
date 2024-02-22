@@ -1,5 +1,5 @@
 import clsx from "clsx"
-import { useCallback, useContext, useEffect, useMemo } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { v4 as uuidv4 } from "uuid"
 import { useTranslation } from "react-i18next"
@@ -23,7 +23,7 @@ import { useDebounce } from "../../../../hooks/use-debounce"
 import useToggleState from "../../../../hooks/use-toggle-state"
 import { NestedForm } from "../../../../utils/nested-form"
 import NewVariant from "./new-variant"
-import { NextSelect } from "../../../../components/molecules/select/next-select"
+import { NextCreateableSelect, NextSelect } from "../../../../components/molecules/select/next-select"
 
 type ProductOptionType = {
   id: string
@@ -272,6 +272,18 @@ const AddVariantsForm = ({
     size: ['M', 'L', 'XL']
   }
 
+  const [selectOptions, setSelectOptions] = useState(OPTIONS)
+  const [rerenderOption, setRerenderOption] = useState(true)
+
+  const onCreateOption = (title: string, value: string) => {
+    setRerenderOption(false)
+    setSelectOptions((prev) => ({
+      ...prev,
+      [title]: [...prev[title], value]
+    }))
+    setTimeout(() => setRerenderOption(true), 0)
+  }
+
   return (
     <>
       <div>
@@ -317,8 +329,7 @@ const AddVariantsForm = ({
                                 label: value
                               }}
                               onChange={(e) => {
-                                console.log(e)
-                                onChange(e.value)
+                                onChange(e?.value)
                               }}
                               options={Object.keys(OPTIONS).map((item) => ({ label: item, value: item }))}
                               placeholder={t("add-variants-color", "Select Title")}
@@ -332,24 +343,33 @@ const AddVariantsForm = ({
                         placeholder={t("add-variants-color", "Color...")}
                         {...register(path(`options.${index}.title`))}
                       /> */}
-                      {(formOptions[index] && formOptions[index]?.title) ? <Controller
-                        control={control}
-                        name={path(`options.${index}.values`)}
-                        render={({ field: { value, onChange } }) => (
-                          <NextSelect
-                            isSearchable={false}
-                            isMulti
-                            value={value}
-                            onChange={onChange}
-                            options={(formOptions[index] && formOptions[index]?.title ? OPTIONS[formOptions[index]?.title as keyof typeof OPTIONS] : []).map((item) => ({ label: item, value: item }))}
-                            placeholder={t("add-variants-blue-red-black", "Blue, Red, Black...")}
-                            isClearable
+                      {rerenderOption && Object.keys(selectOptions).map((key) => {
+                        if (key === formOptions[index]?.title && rerenderOption) return (
+                          <Controller
+                            control={control}
+                            name={path(`options.${index}.values`)}
+                            render={({ field: { value, onChange } }) => (
+                              <NextCreateableSelect
+                                isMulti
+                                value={value}
+                                onChange={onChange}
+                                onCreateOption={(createValue) => {
+                                  onCreateOption(formOptions[index]?.title, createValue)
+                                  onChange([...value, {
+                                    label: createValue,
+                                    value: createValue
+                                  }])
+                                }}
+                                options={(formOptions[index] && formOptions[index]?.title ? selectOptions[formOptions[index]?.title as keyof typeof selectOptions] : []).map((item) => ({ label: item, value: item }))}
+                                placeholder={t("add-variants-blue-red-black", "Blue, Red, Black...")}
+                                isClearable
+                              />
+                            )}
                           />
-                        )}
-                      /> : <NextSelect
-                        placeholder={t("add-variants-blue-red-black", "Please Select the title first")}
-                        isClearable
-                      />}
+                        )
+                        return <></>
+                      })}
+                      {(!formOptions[index]?.title || !rerenderOption) && <NextCreateableSelect />}
                       <Button
                         variant="secondary"
                         size="small"
