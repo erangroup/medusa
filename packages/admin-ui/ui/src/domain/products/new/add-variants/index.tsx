@@ -8,7 +8,7 @@ import { DimensionsFormType } from "../../../../components/forms/product/dimensi
 import CreateFlowVariantForm, {
   CreateFlowVariantFormType,
 } from "../../../../components/forms/product/variant-form/create-flow-variant-form"
-import { VariantOptionType } from "../../../../components/forms/product/variant-form/variant-select-options-form"
+import { VariantOptionType, VariantSelectOptionsFormType } from "../../../../components/forms/product/variant-form/variant-select-options-form"
 import useCheckOptions from "../../../../components/forms/product/variant-form/variant-select-options-form/hooks"
 import Button from "../../../../components/fundamentals/button"
 import PlusIcon from "../../../../components/fundamentals/icons/plus-icon"
@@ -189,12 +189,112 @@ const AddVariantsForm = ({
     } // We can be sure that the value is set as this point.
     const exists = checkForDuplicate(toCheck)
 
+
     if (exists) {
       return false
     }
 
     updateVariant(index, data)
     return true
+  }
+
+  type Options = { [key: string]: string[] };
+
+  function generateVariants(options: Options): void {
+    const optionKeys = Object.keys(options);
+    const optionValues = optionKeys.map(key => options[key]);
+    const variantCount = optionValues.reduce((acc, cur) => acc * cur.length, 1);
+
+    for (let i = 0; i < variantCount; i++) {
+      const variant: any = {};
+      let index = i;
+
+      const optionsData: VariantSelectOptionsFormType = []
+
+      for (const key of optionKeys) {
+        const values = options[key];
+        variant[key] = values[index % values.length];
+        const option_id = uuidv4()
+        optionsData.push({
+          "title": key,
+          "option_id": option_id,
+          "option": {
+            "option_id": option_id,
+            "value": values[index % values.length],
+            "label": values[index % values.length]
+          }
+        })
+        index = Math.floor(index / values.length);
+      }
+      const mainData = {
+        "_internal_id": uuidv4(),
+        "general": {
+          "title": null,
+          "material": null
+        },
+        "prices": {
+          "prices": []
+        },
+        "stock": {
+          "manage_inventory": true,
+          "allow_backorder": false,
+          "sku": null,
+          "barcode": null,
+          "ean": null,
+          "upc": null,
+          "inventory_quantity": null
+        },
+        "dimensions": {
+          "weight": null,
+          "length": null,
+          "width": null,
+          "height": null
+        },
+        "customs": {
+          "hs_code": null,
+          "mid_code": null,
+          "origin_country": null
+        },
+        "options": optionsData
+      }
+      const toCheck = {
+        id: mainData._internal_id!,
+        options: mainData.options.map((da) => da.option).filter((o) => !!o),
+      }
+      const exists = checkForDuplicate(toCheck)
+
+      if (exists) {
+        newVariantForm.setError("options", {
+          type: "deps",
+          message: t(
+            "add-variants-a-variant-with-these-options-already-exists",
+            "A variant with these options already exists."
+          ),
+        })
+      } else {
+        appendVariant({
+          ...mainData,
+          options: mainData.options,
+          general: {
+            ...mainData.general,
+            title: mainData.general.title
+              ? mainData.general.title
+              : mainData.options.map((vo) => vo.option?.value).join(" / "),
+          },
+        })
+      }
+    }
+  }
+
+  const onGenerateVariant = () => {
+
+    const tempObj: any = {}
+
+    formOptions.forEach((element: any) => {
+      tempObj[element.title] = element?.values?.map((item: any) => item?.value)
+    })
+
+    generateVariants(tempObj)
   }
 
   const enableVariants = useMemo(() => {
@@ -456,6 +556,17 @@ const AddVariantsForm = ({
             >
               <PlusIcon size={20} />
               <span>{t("add-variants-add-a-variant", "Add a variant")}</span>
+            </Button>
+            <Button
+              variant="secondary"
+              size="small"
+              className="mt-base h-10 w-full"
+              type="button"
+              disabled={!enableVariants}
+              onClick={onGenerateVariant}
+            >
+              <PlusIcon size={20} />
+              <span>{t("add-variants-generate-variant", "Generate the varients")}</span>
             </Button>
           </div>
         </div>

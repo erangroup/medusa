@@ -1619,6 +1619,7 @@
   "add-variants-variant": "Variant",
   "add-variants-inventory": "Inventory",
   "add-variants-add-a-variant": "Add a variant",
+  "add-variants-generate-variant": "Generate the varients",
   "add-variants-create-variant": "Create Variant",
   "add-variants-cancel": "Cancel",
   "add-variants-save-and-close": "Save and close",
