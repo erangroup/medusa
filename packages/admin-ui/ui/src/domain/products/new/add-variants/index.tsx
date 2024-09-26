@@ -1,5 +1,5 @@
 import clsx from "clsx"
-import { useCallback, useContext, useEffect, useMemo } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form"
 import { v4 as uuidv4 } from "uuid"
 import { useTranslation } from "react-i18next"
@@ -19,11 +19,11 @@ import Modal from "../../../../components/molecules/modal"
 import LayeredModal, {
   LayeredModalContext,
 } from "../../../../components/molecules/modal/layered-modal"
-import TagInput from "../../../../components/molecules/tag-input"
 import { useDebounce } from "../../../../hooks/use-debounce"
 import useToggleState from "../../../../hooks/use-toggle-state"
 import { NestedForm } from "../../../../utils/nested-form"
 import NewVariant from "./new-variant"
+import { NextCreateableSelect, NextSelect } from "../../../../components/molecules/select/next-select"
 
 type ProductOptionType = {
   id: string
@@ -49,7 +49,11 @@ const AddVariantsForm = ({
 }: Props) => {
   const { t } = useTranslation()
   const layeredModalContext = useContext(LayeredModalContext)
-  const { control, path, register } = form
+  const { control, path, register, getValues } = form
+
+  const formValues: any = getValues()
+
+  const formOptions = formValues?.variants?.options
 
   const { checkForDuplicate, getOptions } = useCheckOptions(form)
 
@@ -263,6 +267,23 @@ const AddVariantsForm = ({
     updateOption(index, { ...option, values: [...option.values, value] })
   }
 
+  const OPTIONS = {
+    color: ['red', 'green', 'blue'],
+    size: ['M', 'L', 'XL']
+  }
+
+  const [selectOptions, setSelectOptions] = useState(OPTIONS)
+  const [rerenderOption, setRerenderOption] = useState(true)
+
+  const onCreateOption = (title: string, value: string) => {
+    setRerenderOption(false)
+    setSelectOptions((prev) => ({
+      ...prev,
+      [title]: [...prev[title], value]
+    }))
+    setTimeout(() => setRerenderOption(true), 0)
+  }
+
   return (
     <>
       <div>
@@ -286,7 +307,7 @@ const AddVariantsForm = ({
                 <span>
                   {t(
                     "add-variants-variations-comma-separated",
-                    "Variations (comma separated)"
+                    "Variations"
                   )}
                 </span>
               </div>
@@ -297,38 +318,58 @@ const AddVariantsForm = ({
                       key={field.fieldId}
                       className="gap-x-xsmall grid grid-cols-[230px_1fr_40px]"
                     >
-                      <InputField
-                        placeholder={t("add-variants-color", "Color...")}
-                        {...register(path(`options.${index}.title`))}
-                      />
                       <Controller
                         control={control}
-                        name={path(`options.${index}.values`)}
+                        {...register(path(`options.${index}.title`))}
                         render={({ field: { value, onChange } }) => {
                           return (
-                            <TagInput
-                              onValidate={(newVal) => {
-                                if (value.includes(newVal)) {
-                                  return null
-                                }
-
-                                return newVal
+                            <NextSelect
+                              value={{
+                                value: value,
+                                label: value
                               }}
-                              invalidMessage={t(
-                                "add-variants-already-exists",
-                                "already exists"
-                              )}
-                              showLabel={false}
-                              values={value}
-                              onChange={onChange}
-                              placeholder={t(
-                                "add-variants-blue-red-black",
-                                "Blue, Red, Black..."
-                              )}
+                              onChange={(e) => {
+                                onChange(e?.value)
+                              }}
+                              options={Object.keys(OPTIONS).map((item) => ({ label: item, value: item }))}
+                              placeholder={t("add-variants-color", "Select Title")}
+                              isClearable
                             />
                           )
                         }}
                       />
+
+                      {/* <InputField
+                        placeholder={t("add-variants-color", "Color...")}
+                        {...register(path(`options.${index}.title`))}
+                      /> */}
+                      {rerenderOption && Object.keys(selectOptions).map((key) => {
+                        if (key === formOptions[index]?.title && rerenderOption) return (
+                          <Controller
+                            control={control}
+                            name={path(`options.${index}.values`)}
+                            render={({ field: { value, onChange } }) => (
+                              <NextCreateableSelect
+                                isMulti
+                                value={value}
+                                onChange={onChange}
+                                onCreateOption={(createValue) => {
+                                  onCreateOption(formOptions[index]?.title, createValue)
+                                  onChange([...value, {
+                                    label: createValue,
+                                    value: createValue
+                                  }])
+                                }}
+                                options={(formOptions[index] && formOptions[index]?.title ? selectOptions[formOptions[index]?.title as keyof typeof selectOptions] : []).map((item) => ({ label: item, value: item }))}
+                                placeholder={t("add-variants-blue-red-black", "Blue, Red, Black...")}
+                                isClearable
+                              />
+                            )}
+                          />
+                        )
+                        return <></>
+                      })}
+                      {(!formOptions[index]?.title || !rerenderOption) && <NextCreateableSelect />}
                       <Button
                         variant="secondary"
                         size="small"
